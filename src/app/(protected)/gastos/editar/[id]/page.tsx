@@ -38,7 +38,7 @@ export default function EditarConceptoGastoPage() {
     if (!id) return;
     try {
       const docRef = doc(db, 'conceptosGasto', id);
-      await updateDoc(docRef, data);
+      await updateDoc(docRef, { ...data });
       alert('Concepto de gasto actualizado con éxito');
       router.push('/gastos');
     } catch (error) {
