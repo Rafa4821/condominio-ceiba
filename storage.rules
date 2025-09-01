@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Solo permite que usuarios autenticados escriban en el storage.
+    // Para una mayor seguridad, se podría restringir la escritura a una
+    // ruta específica (ej: /logos/{buildingId}) y validar el tamaño y tipo de archivo.
+    match /{allPaths=**} {
+      allow read;
+      allow write: if request.auth != null;
+    }
+  }
+}

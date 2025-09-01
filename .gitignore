@@ -22,6 +22,9 @@
 
 # misc
 .DS_Store
+
+# Firebase service account key
+/scripts/serviceAccountKey.json
 *.pem
 
 # debug
