@@ -1,69 +1,81 @@
-// src/lib/calculo.ts
-import { Concept, Unit, ReceiptItem, ParamKey } from '@/types';
+import { Gasto, Inmueble, Recibo } from '@/types';
+import { Timestamp } from 'firebase/firestore';
 
 /**
- * Genera el desglose de items para los recibos de todas las unidades activas.
- * @param conceptos - La lista de conceptos a aplicar para el mes.
- * @param unidades - Todas las unidades del edificio.
- * @returns Un mapa donde la clave es el ID de la unidad y el valor es la lista de items del recibo.
+ * Calcula los totales de gastos para un período, agrupados por categoría.
  */
-export function generarRecibos(conceptos: Concept[], unidades: Unit[]): Map<string, ReceiptItem[]> {
-  const unidadesActivas = unidades.filter(u => u.activo);
-  if (unidadesActivas.length === 0) {
-    return new Map();
-  }
-
-  const totalCoeficientes = unidadesActivas.reduce((sum, u) => sum + u.coef, 0);
-  const recibosMap = new Map<string, ReceiptItem[]>();
-
-  // Inicializar el mapa para cada unidad activa
-  unidadesActivas.forEach(u => {
-    recibosMap.set(u.id, []);
-  });
-
-  conceptos.forEach(c => {
-    if (!c.activo) return; // Omitir conceptos inactivos
-
-    switch (c.metodo) {
-      case 'prorrateo':
-        if (c.monto && totalCoeficientes > 0) {
-          unidadesActivas.forEach(u => {
-            const montoProrrateado = (u.coef / totalCoeficientes) * c.monto!;
-            recibosMap.get(u.id)?.push({ conceptoId: c.id, nombre: c.nombre, glosa: c.glosa, monto: Math.round(montoProrrateado) });
-          });
-        }
+export function calcularTotalesPeriodo(gastos: Gasto[]): {
+  totalGastosComunes: number;
+  totalFondoReserva: number;
+  totalFondoContingencia: number;
+  totalFondoEstabilizacion: number;
+} {
+  return gastos.reduce((acc, gasto) => {
+    switch (gasto.categoria) {
+      case 'comun':
+        acc.totalGastosComunes += gasto.monto;
         break;
-
-      case 'fijo':
-        if (c.monto) {
-          unidadesActivas.forEach(u => {
-            recibosMap.get(u.id)?.push({ conceptoId: c.id, nombre: c.nombre, glosa: c.glosa, monto: c.monto! });
-          });
-        }
+      case 'fondo_reserva':
+        acc.totalFondoReserva += gasto.monto;
         break;
-
-      case 'parametro':
-        if (c.paramKey && c.tarifa) {
-          unidadesActivas.forEach(u => {
-            const valorParametro = u[c.paramKey as keyof Unit] as number | undefined;
-            if (typeof valorParametro === 'number') {
-              const montoCalculado = valorParametro * c.tarifa!;
-              recibosMap.get(u.id)?.push({ conceptoId: c.id, nombre: c.nombre, glosa: c.glosa, monto: Math.round(montoCalculado) });
-            }
-          });
-        }
+      case 'fondo_contingencia':
+        acc.totalFondoContingencia += gasto.monto;
+        break;
+      case 'fondo_estabilizacion':
+        acc.totalFondoEstabilizacion += gasto.monto;
         break;
     }
+    return acc;
+  }, { 
+    totalGastosComunes: 0, 
+    totalFondoReserva: 0, 
+    totalFondoContingencia: 0, 
+    totalFondoEstabilizacion: 0 
   });
-
-  return recibosMap;
 }
 
 /**
- * Calcula el total de un conjunto de items de recibo.
- * @param items - Array de ReceiptItem.
- * @returns La suma total de los montos.
+ * Genera los recibos para todos los inmuebles basado en los gastos de un período.
  */
-export function calcularTotalRecibo(items: ReceiptItem[]): number {
-  return items.reduce((sum, item) => sum + item.monto, 0);
+export function generarRecibos(periodoId: string, gastos: Gasto[], inmuebles: Inmueble[], totales: ReturnType<typeof calcularTotalesPeriodo>): Recibo[] {
+  const totalAlicuota = inmuebles.reduce((sum, i) => sum + i.alicuota, 0);
+  if (totalAlicuota === 0) return [];
+
+  return inmuebles.map(inmueble => {
+    const cuotaParteGastosComunes = (inmueble.alicuota / totalAlicuota) * totales.totalGastosComunes;
+    const cuotaParteFondoReserva = (inmueble.alicuota / totalAlicuota) * totales.totalFondoReserva;
+    const cuotaParteFondoContingencia = (inmueble.alicuota / totalAlicuota) * totales.totalFondoContingencia;
+    const cuotaParteFondoEstabilizacion = (inmueble.alicuota / totalAlicuota) * totales.totalFondoEstabilizacion;
+
+    const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia + cuotaParteFondoEstabilizacion;
+    const totalAPagar = subtotalMes + inmueble.saldoAnterior;
+
+    const recibo: Recibo = {
+      id: '', // Se asignará al guardar en Firestore
+      periodoId,
+      inmuebleId: inmueble.id,
+      inmuebleInfo: {
+        identificador: inmueble.identificador,
+        propietario: inmueble.propietario.nombre,
+        alicuota: inmueble.alicuota,
+      },
+      detalleGastosComunes: gastos
+        .filter(g => g.categoria === 'comun')
+        .map(g => ({
+          descripcion: g.descripcion,
+          montoTotalGasto: g.monto,
+          cuotaParte: (inmueble.alicuota / totalAlicuota) * g.monto,
+        })),
+      cuotaParteGastosComunes,
+      cuotaParteFondoReserva,
+      cuotaParteFondoContingencia,
+      cuotaParteFondoEstabilizacion,
+      subtotalMes,
+      saldoAnterior: inmueble.saldoAnterior,
+      totalAPagar,
+      estado: 'pendiente',
+      fechaEmision: Timestamp.now(),
+    };
+    return recibo;
+  });
 }
