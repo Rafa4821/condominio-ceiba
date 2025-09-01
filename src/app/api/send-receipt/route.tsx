@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       <ReciboPDF 
         recibo={recibo} 
         condominio={condominio} 
-        periodo={{ mes: periodo.mes, ano: periodo.ano }}
+        periodo={periodo}
       />
     );
     const pdfBuffer = await streamToBuffer(pdfStream);
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       <ReceiptEmail 
         recibo={recibo} 
         condominio={condominio} 
-        periodo={{ mes: periodo.mes, ano: periodo.ano }}
+        periodo={periodo}
       />
     );
 
