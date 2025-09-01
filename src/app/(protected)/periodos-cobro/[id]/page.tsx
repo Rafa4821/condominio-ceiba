@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from 'react-bootstrap';
 import { PDFViewer } from '@react-pdf/renderer';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDocs, collection, writeBatch, serverTimestamp, query, where, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDocs, collection, writeBatch, serverTimestamp, query, where, getDoc, FieldValue } from 'firebase/firestore';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { db } from '@/lib/firebase';
 import { PeriodoCobro, Gasto, Inmueble, Recibo, Condominio, ConceptoGasto } from '@/types';
@@ -83,7 +83,7 @@ export default function PeriodoDetallePage() {
 
     const periodoRef = doc(db, 'periodosCobro', id);
 
-    const updates: Partial<PeriodoCobro> = { gastos: arrayUnion(nuevoGasto) as any };
+    const updates: { [key: string]: FieldValue | number } = { gastos: arrayUnion(nuevoGasto) };
     if (nuevoGasto.categoria === 'comun') {
       updates.totalGastosComunes = (periodo.totalGastosComunes || 0) + nuevoGasto.monto;
     } else if (nuevoGasto.categoria === 'fondo_reserva') {
@@ -104,7 +104,7 @@ export default function PeriodoDetallePage() {
 
     const periodoRef = doc(db, 'periodosCobro', id);
 
-    const updates: Partial<PeriodoCobro> = { gastos: arrayRemove(gastoToRemove) as any };
+    const updates: { [key: string]: FieldValue | number } = { gastos: arrayRemove(gastoToRemove) };
     if (gastoToRemove.categoria === 'comun') {
       updates.totalGastosComunes = (periodo.totalGastosComunes || 0) - gastoToRemove.monto;
     } else if (gastoToRemove.categoria === 'fondo_reserva') {
@@ -148,7 +148,7 @@ export default function PeriodoDetallePage() {
         const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia + cuotaParteFondoEstabilizacion;
         const totalAPagar = subtotalMes + inmueble.saldoAnterior;
 
-        const nuevoRecibo: Omit<Recibo, 'id' | 'fechaEmision'> & { fechaEmision: any } = {
+        const nuevoRecibo: Omit<Recibo, 'id' | 'fechaEmision'> & { fechaEmision: FieldValue } = {
           periodoId: periodo.id,
           inmuebleId: inmueble.id,
           inmuebleInfo: {
@@ -233,9 +233,13 @@ export default function PeriodoDetallePage() {
 
       alert('¡Correo enviado exitosamente!');
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al enviar el correo:', error);
-      alert(`Error: ${error.message}`);
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('Ocurrió un error desconocido al enviar el correo');
+      }
     } finally {
       setSendingEmailId(null);
     }

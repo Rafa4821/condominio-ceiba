@@ -36,7 +36,7 @@ const Step2Conceptos = ({ conceptos, onConceptosChange }: { conceptos: Concept[]
   return (
     <div className="card p-4">
       <h5>Paso 2: Revisar y Ajustar Conceptos</h5>
-      <p className="text-muted">Ajusta los montos para los conceptos de tipo 'prorrateo' que varían cada mes (ej: cuentas de luz, agua).</p>
+      <p className="text-muted">Ajusta los montos para los conceptos de tipo &apos;prorrateo&apos; que varían cada mes (ej: cuentas de luz, agua).</p>
       <table className="table">
         <thead>
           <tr>
