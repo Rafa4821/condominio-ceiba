@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { Concept, Unit, Building } from '../src/types';
+import { Condominio, Inmueble, ConceptoGasto } from '../src/types';
 
 // IMPORTANTE: Coloca tu archivo de clave de cuenta de servicio en este directorio
 // y renómbralo a 'serviceAccountKey.json'.
@@ -12,7 +12,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const BUILDING_ID = 'edificio-ceiba';
+const CONDOMINIO_ID = 'edificio-ceiba';
 
 async function seedDatabase() {
   console.log('Iniciando el proceso de seeding...');
@@ -20,44 +20,46 @@ async function seedDatabase() {
   const batch = db.batch();
 
   // 1. Crear/Actualizar el edificio
-  const buildingRef = db.collection('buildings').doc(BUILDING_ID);
-  const buildingData: Building = {
-    id: BUILDING_ID,
+  const condominioRef = db.collection('condominios').doc(CONDOMINIO_ID);
+  const condominioData: Condominio = {
+    id: CONDOMINIO_ID,
     nombre: 'Edificio La Ceiba',
     direccion: 'Av. Siempreviva 742',
-    moneda: 'CLP',
-    timezone: 'America/Santiago',
+    rif: 'J-12345678-9',
+    datosBancarios: 'Banco Ficticio, Cta. Corriente 123-456-789',
+    moneda: 'USD',
   };
-  batch.set(buildingRef, buildingData);
-  console.log(`- Edificio '${buildingData.nombre}' preparado para seeding.`);
+  batch.set(condominioRef, condominioData);
+  console.log(`- Condominio '${condominioData.nombre}' preparado para seeding.`);
 
   // 2. Crear unidades
-  const units: Omit<Unit, 'id'>[] = [
-    { buildingId: BUILDING_ID, nombre: 'Depto 101', email: 'residente101@test.com', coef: 0.25, activo: true, propietarioEmail: 'prop101@test.com' },
-    { buildingId: BUILDING_ID, nombre: 'Depto 102', email: 'residente102@test.com', coef: 0.25, activo: true, propietarioEmail: 'prop102@test.com' },
-    { buildingId: BUILDING_ID, nombre: 'Depto 201', email: 'residente201@test.com', coef: 0.50, activo: true, propietarioEmail: 'prop201@test.com' },
-    { buildingId: BUILDING_ID, nombre: 'Depto 202', email: 'residente202@test.com', coef: 0.0, activo: false, propietarioEmail: 'prop202@test.com' }, // Inactiva
+  const inmuebles: Omit<Inmueble, 'id'>[] = [
+    { identificador: 'Depto 101', propietario: { nombre: 'Juan Pérez', email: 'prop101@test.com' }, alicuota: 0.25, saldoAnterior: 0 },
+    { identificador: 'Depto 102', propietario: { nombre: 'Ana García', email: 'prop102@test.com' }, alicuota: 0.25, saldoAnterior: -50 }, // Con deuda
+    { identificador: 'Depto 201', propietario: { nombre: 'Luis Torres', email: 'prop201@test.com' }, alicuota: 0.50, saldoAnterior: 25 }, // Con saldo a favor
   ];
 
-  units.forEach(unitData => {
-    const unitRef = db.collection('units').doc();
-    batch.set(unitRef, unitData);
+  inmuebles.forEach(inmuebleData => {
+    const inmuebleRef = db.collection('inmuebles').doc();
+    batch.set(inmuebleRef, inmuebleData);
   });
-  console.log(`- ${units.length} unidades preparadas para seeding.`);
+  console.log(`- ${inmuebles.length} inmuebles preparados para seeding.`);
 
   // 3. Crear conceptos
-  const concepts: Omit<Concept, 'id'>[] = [
-    { buildingId: BUILDING_ID, nombre: 'Gasto Común', glosa: 'Cargo base por prorrateo', metodo: 'prorrateo', activo: true },
-    { buildingId: BUILDING_ID, nombre: 'Fondo de Reserva', glosa: 'Aporte al fondo de reserva', metodo: 'prorrateo', activo: true },
-    { buildingId: BUILDING_ID, nombre: 'Uso de Quincho', glosa: 'Cargo fijo por uso de quincho', metodo: 'fijo', monto: 25000, activo: true },
-    { buildingId: BUILDING_ID, nombre: 'Multa por Ruidos Molestos', glosa: 'Multa según reglamento', metodo: 'fijo', monto: 50000, activo: false },
+  const conceptos: Omit<ConceptoGasto, 'id'>[] = [
+    { descripcion: 'Cuota de Gasto Común', categoria: 'comun' },
+    { descripcion: 'Aporte al Fondo de Reserva', categoria: 'fondo_reserva' },
+    { descripcion: 'Aporte al Fondo de Contingencia', categoria: 'fondo_contingencia' },
+    { descripcion: 'Aporte al Fondo de Estabilización', categoria: 'fondo_estabilizacion' },
+    { descripcion: 'Multa por ruido molesto', categoria: 'individual' },
+    { descripcion: 'Reparación de grifería (Apto 101)', categoria: 'individual' },
   ];
 
-  concepts.forEach(conceptData => {
-    const conceptRef = db.collection('concepts').doc();
-    batch.set(conceptRef, conceptData);
+  conceptos.forEach(conceptoData => {
+    const conceptoRef = db.collection('conceptosGasto').doc();
+    batch.set(conceptoRef, conceptoData);
   });
-  console.log(`- ${concepts.length} conceptos preparados para seeding.`);
+  console.log(`- ${conceptos.length} conceptos de gasto preparados para seeding.`);
 
   // Ejecutar el batch
   try {
