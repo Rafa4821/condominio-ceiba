@@ -30,8 +30,9 @@ export default function PeriodoDetallePage() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfData, setPdfData] = useState<{ recibo: Recibo; condominio: Condominio; periodo: PeriodoCobro; } | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [isSendingBulk, setIsSendingBulk] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GastoForm>();
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<GastoForm>();
 
   // Cargar conceptos de gasto y el período actual
   useEffect(() => {
@@ -245,6 +246,39 @@ export default function PeriodoDetallePage() {
     }
   };
 
+  const handleSendBulkEmail = async () => {
+    if (!id || !window.confirm('¿Está seguro de que desea enviar todos los recibos por correo? Esta acción puede tardar unos minutos.')) return;
+
+    setIsSendingBulk(true);
+    try {
+      const response = await fetch('/api/send-bulk-receipts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ periodoId: id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error desconocido al enviar los correos.');
+      }
+
+      alert(result.message || '¡Los correos se han puesto en cola para su envío!');
+
+    } catch (error) {
+      console.error('Error en el envío masivo:', error);
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('Ocurrió un error desconocido durante el envío masivo.');
+      }
+    } finally {
+      setIsSendingBulk(false);
+    }
+  };
+
   return (
     <>
       <div>
@@ -322,7 +356,16 @@ export default function PeriodoDetallePage() {
         </>
       ) : (
         <div className="card">
-          <div className="card-header">Recibos Generados ({recibos.length})</div>
+          <div className="card-header d-flex justify-content-between align-items-center">
+            <span>Recibos Generados ({recibos.length})</span>
+            <button 
+              onClick={handleSendBulkEmail} 
+              className="btn btn-primary"
+              disabled={isSendingBulk}
+            >
+              {isSendingBulk ? 'Enviando...' : 'Enviar Todos por Correo'}
+            </button>
+          </div>
           <div className="card-body p-0">
             <table className="table table-striped mb-0">
               <thead>

@@ -81,9 +81,17 @@ export async function POST(req: NextRequest) {
     );
 
     // 4. Enviar el correo
+    const fromAddress = process.env.NODE_ENV === 'development'
+      ? 'Condominio Ceiba <onboarding@resend.dev>'
+      : process.env.RESEND_FROM!;
+
+    const toAddress = process.env.NODE_ENV === 'development'
+      ? ['rafaellucero998@gmail.com']
+      : [inmueble.propietario.email];
+
     const { data, error } = await resend.emails.send({
-      from: `${condominio.nombre} <onboarding@resend.dev>`, // Usar un email verificado en producción
-      to: [inmueble.propietario.email],
+      from: fromAddress,
+      to: toAddress,
       subject: `Recibo de Condominio: ${MESES[periodo.mes - 1]} ${periodo.ano}`,
       html: emailHtml,
       attachments: [
