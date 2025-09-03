@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { collection, onSnapshot, QuerySnapshot, DocumentData, doc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { ImportInmuebles } from '@/components/ImportInmuebles';
 import { db } from '@/lib/firebase';
 import { Inmueble } from '@/types';
 
@@ -11,6 +12,25 @@ export default function InmueblesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleInmueblesImported = async (nuevosInmuebles: Omit<Inmueble, 'id'>[]) => {
+    if (nuevosInmuebles.length === 0) return;
+
+    if (!window.confirm(`Se encontraron ${nuevosInmuebles.length} inmuebles en el archivo. ¿Desea importarlos?`)) return;
+
+    try {
+      const batch = writeBatch(db);
+      nuevosInmuebles.forEach(inmueble => {
+        const docRef = doc(collection(db, 'inmuebles'));
+        batch.set(docRef, inmueble);
+      });
+      await batch.commit();
+      alert(`${nuevosInmuebles.length} inmueble(s) importado(s) exitosamente.`);
+    } catch (error) {
+      console.error("Error importando inmuebles: ", error);
+      alert('Hubo un error al importar los inmuebles.');
+    }
+  };
 
   const totalAlicuota = inmuebles.reduce((sum, current) => sum + (current.alicuota || 0), 0);
 
@@ -77,9 +97,12 @@ export default function InmueblesPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>Gestión de Inmuebles</h1>
-        <Link href="/inmuebles/nuevo" className="btn btn-primary">
-          Agregar Inmueble
-        </Link>
+        <div className="d-flex">
+          <Link href="/inmuebles/nuevo" className="btn btn-primary">
+            Agregar Inmueble
+          </Link>
+          <ImportInmuebles onInmueblesImported={handleInmueblesImported} />
+        </div>
       </div>
 
       <div className="d-flex justify-content-between mb-3">

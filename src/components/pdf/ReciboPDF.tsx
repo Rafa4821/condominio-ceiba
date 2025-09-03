@@ -4,34 +4,77 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { Condominio, Recibo, PeriodoCobro } from '@/types';
 
-// Estilos para el PDF
+const palette = {
+  green: '#3A7D44',
+  lightGreen: 'rgba(58, 125, 68, 0.1)',
+  darkText: '#333333',
+  lightText: '#555555',
+  borderColor: '#E0E0E0',
+  red: '#D32F2F',
+  footerGray: '#666666',
+};
+
 const styles = StyleSheet.create({
-  page: { padding: 30, fontFamily: 'Helvetica', fontSize: 10, color: '#333' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 2, borderBottomColor: '#4A90E2', paddingBottom: 10 },
-  headerInfo: { textAlign: 'right' },
-  headerTitle: { fontSize: 14, fontWeight: 'bold', color: '#4A90E2' },
-  headerText: { fontSize: 9, marginTop: 2 },
-  logo: { width: 80, height: 80 },
+  page: { paddingHorizontal: 40, paddingTop: 30, paddingBottom: 70, fontFamily: 'Helvetica', fontSize: 9, color: palette.darkText },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 2, borderBottomColor: palette.green, paddingBottom: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', width: '60%' },
+  logo: { width: 50, height: 50, marginRight: 10 },
+  headerTextContainer: { flexDirection: 'column' },
+  condoName: { fontSize: 13, fontWeight: 'bold', color: palette.green, fontFamily: 'Helvetica-Bold' },
+  condoInfo: { fontSize: 8, color: palette.lightText },
+  headerRight: { textAlign: 'right', width: '40%' },
+  receiptTitle: { fontSize: 13, fontWeight: 'bold', color: palette.green, marginBottom: 8, fontFamily: 'Helvetica-Bold' },
+  receiptInfo: { fontSize: 9, marginBottom: 2 },
+
   section: { marginTop: 20 },
-  sectionTitle: { fontSize: 12, fontWeight: 'bold', backgroundColor: '#F0F0F0', padding: 5, marginBottom: 10, color: '#4A90E2' },
-  grid: { flexDirection: 'row', justifyContent: 'space-between' },
-  gridCol: { width: '48%' },
-  table: { display: 'flex', width: 'auto' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#EAEAEA', paddingVertical: 4 },
-  tableColHeader: { width: '70%', fontWeight: 'bold' },
-  tableCol: { width: '70%' },
-  tableCellHeader: { textAlign: 'right', width: '30%', fontWeight: 'bold' },
-  tableCell: { textAlign: 'right', width: '30%' },
-  summaryBox: { backgroundColor: '#F8F8F8', padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#EAEAEA' },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
-  summaryLabel: { fontWeight: 'bold' },
-  summaryTotal: { fontWeight: 'bold', fontSize: 12, color: '#4A90E2' },
-  footer: { position: 'absolute', bottom: 30, left: 30, right: 30, textAlign: 'center', fontSize: 8, color: 'grey' },
-  textRight: { textAlign: 'right' },
-  bold: { fontWeight: 'bold' },
+  sectionTitleContainer: { backgroundColor: palette.lightGreen, paddingVertical: 5, paddingHorizontal: 8, marginBottom: 10, borderRadius: 3 },
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', color: palette.green, fontFamily: 'Helvetica-Bold' },
+
+  infoBox: { borderWidth: 1, borderColor: palette.borderColor, borderRadius: 3, padding: 10 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  infoLabel: { color: palette.lightText },
+  infoValue: { fontWeight: 'bold', textAlign: 'right', fontFamily: 'Helvetica-Bold' },
+
+  grid: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, columnGap: 20 },
+  gridCol: { flex: 1 },
+
+  gastosTable: { flexDirection: 'column' },
+  gastosRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: palette.borderColor, paddingVertical: 4 },
+  gastosDescription: { flex: 1 },
+  gastosAmount: { width: '35%', textAlign: 'right' },
+  gastosTotalRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1.5, borderTopColor: palette.darkText, marginTop: 5, paddingTop: 5 },
+  gastosTotalLabel: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold' },
+  gastosTotalAmount: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold', textAlign: 'right' },
+
+  summaryBox: { borderWidth: 1, borderColor: palette.borderColor, borderRadius: 3, padding: 10, marginTop: 10 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  summaryLabel: {},
+  summaryAmount: { textAlign: 'right' },
+  subtotalRow: { borderTopWidth: 1, borderTopColor: palette.borderColor, marginTop: 5, paddingTop: 5 },
+  subtotalLabel: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold' },
+  subtotalAmount: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold', textAlign: 'right' },
+  saldoAnteriorAmount: { color: palette.red, fontFamily: 'Helvetica-Bold', fontWeight: 'bold', textAlign: 'right' },
+  totalRow: { borderTopWidth: 2, borderTopColor: palette.green, marginTop: 8, paddingTop: 8 },
+  totalLabel: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold', color: palette.green, fontSize: 12 },
+  totalAmount: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold', color: palette.green, fontSize: 12, textAlign: 'right' },
+
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    textAlign: 'center',
+    fontSize: 8,
+    color: palette.footerGray,
+    borderTopWidth: 1,
+    borderTopColor: palette.borderColor,
+    paddingTop: 10,
+  },
+  footerBold: { fontFamily: 'Helvetica-Bold', fontWeight: 'bold' },
 });
 
-const formatCurrency = (value: number) => `$${(value || 0).toFixed(2)}`;
+const formatCurrency = (value: number) => `USD${(value || 0).toFixed(2)}`;
+const formatPercentage = (value: number) => `${(value || 0).toFixed(4)}%`;
 
 interface ReciboPDFProps {
   recibo: Recibo;
@@ -44,97 +87,119 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
 export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, periodo }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      {/* Encabezado */}
       <View style={styles.header}>
-        <View>
-          {/* <Image style={styles.logo} src="/logo.png" /> Reemplazar con la ruta a tu logo */}
-          <Text style={styles.headerTitle}>{condominio.nombre}</Text>
-          <Text style={styles.headerText}>{condominio.direccion}</Text>
-          <Text style={styles.headerText}>RIF: {condominio.rif}</Text>
+        <View style={styles.headerLeft}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          {condominio.logoUrl && <Image style={styles.logo} src={condominio.logoUrl} />}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.condoName}>{condominio.nombre.toUpperCase()}</Text>
+            <Text style={styles.condoInfo}>{condominio.direccion}</Text>
+            <Text style={styles.condoInfo}>RIF: {condominio.rif}</Text>
+          </View>
         </View>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>RECIBO DE CONDOMINIO</Text>
-          <Text style={styles.headerText}>Período: {MESES[periodo.mes - 1]} {periodo.ano}</Text>
-          <Text style={styles.headerText}>Fecha Emisión: {new Date(recibo.fechaEmision.seconds * 1000).toLocaleDateString()}</Text>
-          <Text style={styles.headerText}>Recibo N°: {recibo.id.substring(0, 7)}</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.receiptTitle}>RECIBO DE CONDOMINIO</Text>
+          <Text style={styles.receiptInfo}>Período: {MESES[periodo.mes - 1]} {periodo.ano}</Text>
+          <Text style={styles.receiptInfo}>Fecha Emisión: {new Date(recibo.fechaEmision.seconds * 1000).toLocaleDateString('es-VE')}</Text>
+          <Text style={styles.receiptInfo}>Recibo N°: {recibo.id.substring(0, 7)}</Text>
         </View>
       </View>
 
-      {/* Información del Propietario */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Información del Propietario</Text>
-        <View style={styles.summaryBox}>
-          <View style={styles.summaryRow}>
-            <Text>Propietario:</Text>
-            <Text style={styles.bold}>{recibo.inmuebleInfo.propietario}</Text>
+        <View style={styles.sectionTitleContainer}>
+          <Text style={styles.sectionTitle}>Información del Propietario</Text>
+        </View>
+        <View style={styles.infoBox}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Propietario:</Text>
+            <Text style={styles.infoValue}>{recibo.inmuebleInfo.propietario}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text>Inmueble:</Text>
-            <Text style={styles.bold}>{recibo.inmuebleInfo.identificador}</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Inmueble:</Text>
+            <Text style={styles.infoValue}>{recibo.inmuebleInfo.identificador}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text>Alícuota:</Text>
-            <Text style={styles.bold}>{recibo.inmuebleInfo.alicuota.toFixed(4)}%</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Alícuota:</Text>
+            <Text style={styles.infoValue}>{formatPercentage(recibo.inmuebleInfo.alicuota)}</Text>
           </View>
         </View>
       </View>
 
-      {/* Desglose y Resumen */}
-      <View style={[styles.grid, styles.section]}>
-        {/* Columna Izquierda: Relación de Gastos */}
+      <View style={styles.grid}>
+        {/* Columna Izquierda: Gastos Totales del Condominio */}
         <View style={styles.gridCol}>
-          <Text style={styles.sectionTitle}>Relación de Gastos Comunes</Text>
-          <View style={styles.table}>
-            {recibo.detalleGastosComunes.map((gasto, index) => (
-              <View style={styles.tableRow} key={index}>
-                <Text style={styles.tableCol}>{gasto.descripcion}</Text>
-                <Text style={styles.tableCell}>{formatCurrency(gasto.cuotaParte)}</Text>
-              </View>
-            ))}
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Gastos Totales del Condominio</Text>
+          </View>
+          <View style={styles.infoBox}>
+            <View style={styles.gastosTable}>
+              {recibo.detalleGastosComunes.map((gasto, index) => (
+                <View style={styles.gastosRow} key={index}>
+                  <Text style={styles.gastosDescription}>{gasto.descripcion}</Text>
+                  <Text style={styles.gastosAmount}>{formatCurrency(gasto.montoTotalGasto)}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.gastosTotalRow}>
+              <Text style={styles.gastosTotalLabel}>Total Gastos del Período</Text>
+              <Text style={styles.gastosTotalAmount}>{formatCurrency(periodo.totalGastosComunes)}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Columna Derecha: Resumen de Cuotas */}
+        {/* Columna Derecha: Cuota Parte y Resumen de Pago */}
         <View style={styles.gridCol}>
-          <Text style={styles.sectionTitle}>Resumen de Cuotas</Text>
+          {/* Cuota Parte Individual */}
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>Su Cuota Parte</Text>
+          </View>
+          <View style={styles.infoBox}>
+            <View style={styles.gastosTable}>
+              {recibo.detalleGastosComunes.map((gasto, index) => (
+                <View style={styles.gastosRow} key={index}>
+                  <Text style={styles.gastosDescription}>{gasto.descripcion}</Text>
+                  <Text style={styles.gastosAmount}>{formatCurrency(gasto.cuotaParte)}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.gastosTotalRow}>
+              <Text style={styles.gastosTotalLabel}>Total Gastos Comunes</Text>
+              <Text style={styles.gastosTotalAmount}>{formatCurrency(recibo.cuotaParteGastosComunes)}</Text>
+            </View>
+          </View>
+
+          {/* Resumen de Pago */}
           <View style={styles.summaryBox}>
             <View style={styles.summaryRow}>
-              <Text>Total Gastos Comunes:</Text>
-              <Text>{formatCurrency(recibo.cuotaParteGastosComunes)}</Text>
+              <Text style={styles.summaryLabel}>Total Gastos Comunes:</Text>
+              <Text style={styles.summaryAmount}>{formatCurrency(recibo.cuotaParteGastosComunes)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text>Fondo de Reserva:</Text>
-              <Text>{formatCurrency(recibo.cuotaParteFondoReserva)}</Text>
+              <Text style={styles.summaryLabel}>Fondo de Reserva:</Text>
+              <Text style={styles.summaryAmount}>{formatCurrency(recibo.cuotaParteFondoReserva)}</Text>
+            </View>
+            <View style={[styles.summaryRow, styles.subtotalRow]}>
+              <Text style={styles.subtotalLabel}>Sub-Total del Mes:</Text>
+              <Text style={styles.subtotalAmount}>{formatCurrency(recibo.subtotalMes)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text>Fondo de Contingencia:</Text>
-              <Text>{formatCurrency(recibo.cuotaParteFondoContingencia)}</Text>
+              <Text style={styles.summaryLabel}>Saldo Anterior:</Text>
+              <Text style={styles.saldoAnteriorAmount}>{formatCurrency(recibo.saldoAnterior)}</Text>
             </View>
-            <View style={styles.summaryRow}>
-              <Text>Fondo de Estabilización:</Text>
-              <Text>{formatCurrency(recibo.cuotaParteFondoEstabilizacion)}</Text>
-            </View>
-            <View style={[styles.summaryRow, { marginTop: 10, borderTopWidth: 1, borderTopColor: '#EAEAEA', paddingTop: 5 }]}>
-              <Text style={styles.summaryLabel}>Sub-Total del Mes:</Text>
-              <Text style={styles.summaryLabel}>{formatCurrency(recibo.subtotalMes)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text>Saldo Anterior:</Text>
-              <Text style={{ color: recibo.saldoAnterior < 0 ? 'green' : 'red' }}>{formatCurrency(recibo.saldoAnterior)}</Text>
-            </View>
-            <View style={[styles.summaryRow, { marginTop: 10, borderTopWidth: 1, borderTopColor: '#4A90E2', paddingTop: 5 }]}>
-              <Text style={styles.summaryTotal}>TOTAL A PAGAR:</Text>
-              <Text style={styles.summaryTotal}>{formatCurrency(recibo.totalAPagar)}</Text>
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>TOTAL A PAGAR:</Text>
+              <Text style={styles.totalAmount}>{formatCurrency(recibo.totalAPagar)}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Pie de Página */}
       <View style={styles.footer}>
-        <Text style={styles.bold}>Datos para el Pago</Text>
+        <Text style={styles.footerBold}>Datos para el Pago</Text>
         <Text>{condominio.datosBancarios}</Text>
-        <Text style={{ marginTop: 5 }}>Para confirmar su pago, por favor envíe el comprobante a la administración. Este documento es un aviso de cobro y no un comprobante de pago.</Text>
+        <Text>{condominio.nombre.toUpperCase()}</Text>
+        <Text>Correo: {condominio.correoContacto}</Text>
+        <Text style={{ marginTop: 8 }}>Para confirmar su pago, por favor envíe el comprobante a la administración. Este documento es un aviso de cobro y no un comprobante de pago.</Text>
       </View>
     </Page>
   </Document>

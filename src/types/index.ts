@@ -7,6 +7,7 @@ export interface Condominio {
   direccion: string;
   rif: string;
   datosBancarios: string;
+  correoContacto: string;
   logoUrl?: string;
   moneda: 'USD'; // Moneda fija para el sistema
 }
