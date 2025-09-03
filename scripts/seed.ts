@@ -4,7 +4,8 @@ import { Condominio, Inmueble, ConceptoGasto } from '../src/types';
 // IMPORTANTE: Coloca tu archivo de clave de cuenta de servicio en este directorio
 // y renómbralo a 'serviceAccountKey.json'.
 // Este archivo NO debe ser subido a tu repositorio de Git.
-const serviceAccount = require('./serviceAccountKey.json');
+// @ts-expect-error -- El archivo serviceAccountKey.json no está en el repositorio, por lo que se espera un error de importación durante el linting.
+import serviceAccount from './serviceAccountKey.json';
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -27,6 +28,7 @@ async function seedDatabase() {
     direccion: 'Av. Siempreviva 742',
     rif: 'J-12345678-9',
     datosBancarios: 'Banco Ficticio, Cta. Corriente 123-456-789',
+    correoContacto: 'contacto@edificioceiba.com',
     moneda: 'USD',
   };
   batch.set(condominioRef, condominioData);
