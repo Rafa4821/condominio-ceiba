@@ -42,10 +42,18 @@ export default function PeriodosCobroPage() {
   }, [searchTerm, periodos]);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este período? Esta acción no se puede deshacer.')) {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este período? Se borrarán todos los recibos asociados y se desvincularán los gastos. Esta acción no se puede deshacer.')) {
       try {
-        await deleteDoc(doc(db, 'periodosCobro', id));
+        const response = await fetch(`/api/periodos-cobro/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Error en la respuesta del servidor');
+        }
+
         alert('Período eliminado con éxito.');
+        // La lista se actualizará automáticamente gracias al listener de onSnapshot
       } catch (error) {
         console.error('Error al eliminar el período:', error);
         alert('Hubo un error al eliminar el período.');
@@ -113,11 +121,9 @@ export default function PeriodosCobroPage() {
                     <Dropdown.Menu>
                       <Dropdown.Item as={Link} href={`/periodos-cobro/${periodo.id}`}>Ver / Gestionar</Dropdown.Item>
                       {periodo.estado === 'borrador' && (
-                        <>
-                          <Dropdown.Item as={Link} href={`/periodos-cobro/editar/${periodo.id}`}>Editar</Dropdown.Item>
-                          <Dropdown.Item onClick={() => handleDelete(periodo.id)} className="text-danger">Eliminar</Dropdown.Item>
-                        </>
+                        <Dropdown.Item as={Link} href={`/periodos-cobro/editar/${periodo.id}`}>Editar</Dropdown.Item>
                       )}
+                      <Dropdown.Item onClick={() => handleDelete(periodo.id)} className="text-danger">Eliminar</Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
                 </td>
