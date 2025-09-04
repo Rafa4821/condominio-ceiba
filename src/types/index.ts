@@ -35,7 +35,7 @@ export interface Inmueble {
 export interface ConceptoGasto {
   id: string;
   descripcion: string;
-  categoria: 'comun' | 'individual';
+  categoria: 'comun' | 'individual' | 'fondo_reserva' | 'fondo_contingencia' | 'fondo_estabilizacion';
   tipo: 'fijo' | 'variable';
   montoFijo?: number; // Monto para gastos fijos
 }
@@ -44,8 +44,8 @@ export interface ConceptoGasto {
 export interface Gasto {
   id: string;
   descripcion: string;
-  monto: number; // Monto total del gasto en USD
-  categoria: 'comun' | 'individual';
+  monto: number;
+  categoria: ConceptoGasto['categoria'];
 }
 
 // Representa un ciclo de facturación (ej: "Julio 2025")
@@ -55,9 +55,7 @@ export interface PeriodoCobro {
   ano: number;
   gastos: Gasto[];
   totalGastosComunes: number;
-  fondoReserva?: number; // Ahora se calculará automáticamente
-  fondoContingencia?: number; // Ahora se calculará automáticamente
-  totalRecaudacion: number;
+  totalRecaudacion?: number;
   estado: 'borrador' | 'publicado';
   fechaCreacion: Timestamp;
 }
