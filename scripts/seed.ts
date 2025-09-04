@@ -49,12 +49,12 @@ async function seedDatabase() {
 
   // 3. Crear conceptos
   const conceptos: Omit<ConceptoGasto, 'id'>[] = [
-    { descripcion: 'Cuota de Gasto Común', categoria: 'comun' },
-    { descripcion: 'Aporte al Fondo de Reserva', categoria: 'fondo_reserva' },
-    { descripcion: 'Aporte al Fondo de Contingencia', categoria: 'fondo_contingencia' },
-    { descripcion: 'Aporte al Fondo de Estabilización', categoria: 'fondo_estabilizacion' },
-    { descripcion: 'Multa por ruido molesto', categoria: 'individual' },
-    { descripcion: 'Reparación de grifería (Apto 101)', categoria: 'individual' },
+    { descripcion: 'Sueldo Conserje', categoria: 'comun', tipo: 'fijo', montoFijo: 500 },
+    { descripcion: 'Mantenimiento Ascensor', categoria: 'comun', tipo: 'fijo', montoFijo: 150 },
+    { descripcion: 'Electricidad Áreas Comunes', categoria: 'comun', tipo: 'variable' },
+    { descripcion: 'Agua Áreas Comunes', categoria: 'comun', tipo: 'variable' },
+    { descripcion: 'Multa por ruido molesto', categoria: 'individual', tipo: 'variable' },
+    { descripcion: 'Reparación de grifería (Apto 101)', categoria: 'individual', tipo: 'variable' },
   ];
 
   conceptos.forEach(conceptoData => {
