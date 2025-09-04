@@ -7,7 +7,9 @@ import { ConceptoGasto } from '@/types';
 // Este tipo representa los datos del formulario, sin el 'id'
 export interface ConceptoGastoData {
   descripcion: string;
-  categoria: 'comun' | 'fondo_reserva' | 'fondo_contingencia' | 'individual' | 'fondo_estabilizacion';
+  categoria: 'comun' | 'individual';
+  tipo: 'fijo' | 'variable';
+  montoFijo?: number;
 }
 
 interface FormConceptoGastoProps {
@@ -16,9 +18,14 @@ interface FormConceptoGastoProps {
 }
 
 export default function FormConceptoGasto({ onSubmit, initialData }: FormConceptoGastoProps) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ConceptoGastoData>({
-    defaultValues: initialData,
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<ConceptoGastoData>({
+    defaultValues: {
+      ...initialData,
+      tipo: initialData?.tipo || 'variable',
+    },
   });
+
+  const tipoGasto = watch('tipo');
 
   useEffect(() => {
     if (initialData) {
@@ -41,21 +48,49 @@ export default function FormConceptoGasto({ onSubmit, initialData }: FormConcept
         {errors.descripcion && <div className="text-danger">{errors.descripcion.message}</div>}
       </div>
 
-      <div className="mb-3">
-        <label htmlFor="categoria" className="form-label">Categoría</label>
-        <select 
-          className="form-select"
-          id="categoria"
-          {...register('categoria', { required: 'Debe seleccionar una categoría' })}
-        >
-          <option value="comun">Gasto Común (Prorrateable)</option>
-          <option value="fondo_reserva">Fondo de Reserva</option>
-          <option value="fondo_contingencia">Fondo de Contingencia</option>
-          <option value="fondo_estabilizacion">Fondo de Estabilización</option>
-          <option value="individual">Gasto Individual (Asignación directa)</option>
-        </select>
-        {errors.categoria && <div className="text-danger">{errors.categoria.message}</div>}
+      <div className="row mb-3">
+        <div className="col-md-6">
+          <label htmlFor="categoria" className="form-label">Categoría</label>
+          <select 
+            className="form-select"
+            id="categoria"
+            {...register('categoria', { required: 'Debe seleccionar una categoría' })}
+          >
+            <option value="comun">Gasto Común (Prorrateable)</option>
+            <option value="individual">Gasto Individual (Asignación directa)</option>
+          </select>
+          {errors.categoria && <div className="text-danger">{errors.categoria.message}</div>}
+        </div>
+        <div className="col-md-6">
+          <label htmlFor="tipo" className="form-label">Tipo de Gasto</label>
+          <select 
+            className="form-select"
+            id="tipo"
+            {...register('tipo')}
+          >
+            <option value="variable">Variable</option>
+            <option value="fijo">Fijo</option>
+          </select>
+        </div>
       </div>
+
+      {tipoGasto === 'fijo' && (
+        <div className="mb-3">
+          <label htmlFor="montoFijo" className="form-label">Monto Fijo (USD)</label>
+          <input 
+            type="number"
+            step="0.01"
+            className="form-control"
+            id="montoFijo"
+            {...register('montoFijo', { 
+              required: 'El monto es obligatorio para gastos fijos', 
+              valueAsNumber: true,
+              min: { value: 0.01, message: 'El monto debe ser mayor a cero' }
+            })}
+          />
+          {errors.montoFijo && <div className="text-danger">{errors.montoFijo.message}</div>}
+        </div>
+      )}
 
       <button type="submit" className="btn btn-primary">Guardar Concepto</button>
     </form>

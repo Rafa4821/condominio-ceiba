@@ -83,7 +83,12 @@ interface ReciboPDFProps {
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, periodo }) => (
+export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, periodo }) => {
+  const totalFondoReserva = (periodo.totalGastosComunes || 0) * 0.10;
+  const totalFondoContingencia = (periodo.totalGastosComunes || 0) * 0.235;
+  const totalGeneralCondominio = (periodo.totalGastosComunes || 0) + totalFondoReserva + totalFondoContingencia;
+
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
@@ -138,10 +143,18 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
                   <Text style={styles.gastosAmount}>{formatCurrency(gasto.montoTotalGasto)}</Text>
                 </View>
               ))}
+              <View style={styles.gastosRow}>
+                <Text style={styles.gastosDescription}>Fondo de Reserva (10%)</Text>
+                <Text style={styles.gastosAmount}>{formatCurrency(totalFondoReserva)}</Text>
+              </View>
+              <View style={styles.gastosRow}>
+                <Text style={styles.gastosDescription}>Fondo de Contingencia (23.5%)</Text>
+                <Text style={styles.gastosAmount}>{formatCurrency(totalFondoContingencia)}</Text>
+              </View>
             </View>
             <View style={styles.gastosTotalRow}>
-              <Text style={styles.gastosTotalLabel}>Total Gastos del Período</Text>
-              <Text style={styles.gastosTotalAmount}>{formatCurrency(periodo.totalGastosComunes)}</Text>
+              <Text style={styles.gastosTotalLabel}>Total General del Condominio</Text>
+              <Text style={styles.gastosTotalAmount}>{formatCurrency(totalGeneralCondominio)}</Text>
             </View>
           </View>
         </View>
@@ -160,24 +173,24 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
                   <Text style={styles.gastosAmount}>{formatCurrency(gasto.cuotaParte)}</Text>
                 </View>
               ))}
+              <View style={styles.gastosRow}>
+                <Text style={styles.gastosDescription}>Fondo de Reserva (10%)</Text>
+                <Text style={styles.gastosAmount}>{formatCurrency(recibo.cuotaParteFondoReserva)}</Text>
+              </View>
+              <View style={styles.gastosRow}>
+                <Text style={styles.gastosDescription}>Fondo de Contingencia (23.5%)</Text>
+                <Text style={styles.gastosAmount}>{formatCurrency(recibo.cuotaParteFondoContingencia)}</Text>
+              </View>
             </View>
             <View style={styles.gastosTotalRow}>
-              <Text style={styles.gastosTotalLabel}>Total Gastos Comunes</Text>
-              <Text style={styles.gastosTotalAmount}>{formatCurrency(recibo.cuotaParteGastosComunes)}</Text>
+              <Text style={styles.gastosTotalLabel}>Total Cuota Parte</Text>
+              <Text style={styles.gastosTotalAmount}>{formatCurrency(recibo.subtotalMes)}</Text>
             </View>
           </View>
 
           {/* Resumen de Pago */}
           <View style={styles.summaryBox}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Gastos Comunes:</Text>
-              <Text style={styles.summaryAmount}>{formatCurrency(recibo.cuotaParteGastosComunes)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Fondo de Reserva:</Text>
-              <Text style={styles.summaryAmount}>{formatCurrency(recibo.cuotaParteFondoReserva)}</Text>
-            </View>
-            <View style={[styles.summaryRow, styles.subtotalRow]}>
               <Text style={styles.subtotalLabel}>Sub-Total del Mes:</Text>
               <Text style={styles.subtotalAmount}>{formatCurrency(recibo.subtotalMes)}</Text>
             </View>
@@ -203,3 +216,4 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
     </Page>
   </Document>
 );
+};

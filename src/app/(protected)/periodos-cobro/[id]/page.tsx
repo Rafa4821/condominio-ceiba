@@ -84,16 +84,10 @@ export default function PeriodoDetallePage() {
 
     const periodoRef = doc(db, 'periodosCobro', id);
 
-    const updates: { [key: string]: FieldValue | number } = { gastos: arrayUnion(nuevoGasto) };
-    if (nuevoGasto.categoria === 'comun') {
-      updates.totalGastosComunes = (periodo.totalGastosComunes || 0) + nuevoGasto.monto;
-    } else if (nuevoGasto.categoria === 'fondo_reserva') {
-      updates.totalFondoReserva = (periodo.totalFondoReserva || 0) + nuevoGasto.monto;
-    } else if (nuevoGasto.categoria === 'fondo_contingencia') {
-      updates.totalFondoContingencia = (periodo.totalFondoContingencia || 0) + nuevoGasto.monto;
-    } else if (nuevoGasto.categoria === 'fondo_estabilizacion') {
-      updates.totalFondoEstabilizacion = (periodo.totalFondoEstabilizacion || 0) + nuevoGasto.monto;
-    }
+    const updates: { [key: string]: FieldValue | number } = { 
+      gastos: arrayUnion(nuevoGasto),
+      totalGastosComunes: (periodo.totalGastosComunes || 0) + nuevoGasto.monto
+    };
 
     await updateDoc(periodoRef, updates);
 
@@ -105,16 +99,10 @@ export default function PeriodoDetallePage() {
 
     const periodoRef = doc(db, 'periodosCobro', id);
 
-    const updates: { [key: string]: FieldValue | number } = { gastos: arrayRemove(gastoToRemove) };
-    if (gastoToRemove.categoria === 'comun') {
-      updates.totalGastosComunes = (periodo.totalGastosComunes || 0) - gastoToRemove.monto;
-    } else if (gastoToRemove.categoria === 'fondo_reserva') {
-      updates.totalFondoReserva = (periodo.totalFondoReserva || 0) - gastoToRemove.monto;
-    } else if (gastoToRemove.categoria === 'fondo_contingencia') {
-      updates.totalFondoContingencia = (periodo.totalFondoContingencia || 0) - gastoToRemove.monto;
-    } else if (gastoToRemove.categoria === 'fondo_estabilizacion') {
-      updates.totalFondoEstabilizacion = (periodo.totalFondoEstabilizacion || 0) - gastoToRemove.monto;
-    }
+    const updates: { [key: string]: FieldValue | number } = { 
+      gastos: arrayRemove(gastoToRemove),
+      totalGastosComunes: (periodo.totalGastosComunes || 0) - gastoToRemove.monto
+    };
 
     await updateDoc(periodoRef, updates);
   };
@@ -127,6 +115,10 @@ export default function PeriodoDetallePage() {
       const inmueblesSnapshot = await getDocs(inmueblesCollection);
       const inmuebles = inmueblesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inmueble));
 
+      // Calcular fondos automáticamente
+      const fondoReservaCalculado = (periodo.totalGastosComunes || 0) * 0.10;
+      const fondoContingenciaCalculado = (periodo.totalGastosComunes || 0) * 0.235;
+
       const batch = writeBatch(db);
       const recibosCollection = collection(db, 'recibos');
 
@@ -134,19 +126,17 @@ export default function PeriodoDetallePage() {
         const alicuota = inmueble.alicuota / 100;
         
         const cuotaParteGastosComunes = (periodo.totalGastosComunes || 0) * alicuota;
-        const cuotaParteFondoReserva = (periodo.totalFondoReserva || 0) * alicuota;
-        const cuotaParteFondoContingencia = (periodo.totalFondoContingencia || 0) * alicuota;
-        const cuotaParteFondoEstabilizacion = (periodo.totalFondoEstabilizacion || 0) * alicuota;
+        const cuotaParteFondoReserva = fondoReservaCalculado * alicuota;
+        const cuotaParteFondoContingencia = fondoContingenciaCalculado * alicuota;
 
         const detalleGastosComunes = periodo.gastos
-          .filter(g => g.categoria === 'comun')
           .map(gasto => ({
             descripcion: gasto.descripcion,
             montoTotalGasto: gasto.monto,
             cuotaParte: gasto.monto * alicuota,
           }));
 
-        const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia + cuotaParteFondoEstabilizacion;
+        const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia;
         const totalAPagar = subtotalMes + inmueble.saldoAnterior;
 
         const nuevoRecibo: Omit<Recibo, 'id' | 'fechaEmision'> & { fechaEmision: FieldValue } = {
@@ -161,7 +151,6 @@ export default function PeriodoDetallePage() {
           cuotaParteGastosComunes,
           cuotaParteFondoReserva,
           cuotaParteFondoContingencia,
-          cuotaParteFondoEstabilizacion,
           subtotalMes,
           saldoAnterior: inmueble.saldoAnterior,
           totalAPagar,
@@ -174,7 +163,11 @@ export default function PeriodoDetallePage() {
       }
 
       const periodoRef = doc(db, 'periodosCobro', id);
-      batch.update(periodoRef, { estado: 'publicado' });
+      batch.update(periodoRef, { 
+        estado: 'publicado',
+        fondoReserva: fondoReservaCalculado,
+        fondoContingencia: fondoContingenciaCalculado
+      });
 
       await batch.commit();
 
@@ -320,9 +313,8 @@ export default function PeriodoDetallePage() {
               <span>Gastos Registrados ({periodo.gastos.length})</span>
               <div className="text-end">
                 <strong>Total Gastos Comunes: ${(periodo.totalGastosComunes || 0).toFixed(2)}</strong><br />
-                <small>Fondo de Reserva: ${(periodo.totalFondoReserva || 0).toFixed(2)}</small><br />
-                <small>Fondo de Contingencia: ${(periodo.totalFondoContingencia || 0).toFixed(2)}</small><br />
-                <small>Fondo de Estabilización: ${(periodo.totalFondoEstabilizacion || 0).toFixed(2)}</small>
+                <small>Fondo de Reserva (10%): ${((periodo.totalGastosComunes || 0) * 0.10).toFixed(2)}</small><br />
+                <small>Fondo de Contingencia (23.5%): ${((periodo.totalGastosComunes || 0) * 0.235).toFixed(2)}</small>
               </div>
             </div>
             <div className="card-body p-0">

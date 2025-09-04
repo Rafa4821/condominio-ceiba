@@ -35,7 +35,9 @@ export interface Inmueble {
 export interface ConceptoGasto {
   id: string;
   descripcion: string;
-  categoria: 'comun' | 'fondo_reserva' | 'fondo_contingencia' | 'individual' | 'fondo_estabilizacion';
+  categoria: 'comun' | 'individual';
+  tipo: 'fijo' | 'variable';
+  montoFijo?: number; // Monto para gastos fijos
 }
 
 // Representa un gasto individual registrado en un período
@@ -43,7 +45,7 @@ export interface Gasto {
   id: string;
   descripcion: string;
   monto: number; // Monto total del gasto en USD
-  categoria: 'comun' | 'fondo_reserva' | 'fondo_contingencia' | 'individual' | 'fondo_estabilizacion';
+  categoria: 'comun' | 'individual';
 }
 
 // Representa un ciclo de facturación (ej: "Julio 2025")
@@ -53,9 +55,9 @@ export interface PeriodoCobro {
   ano: number;
   gastos: Gasto[];
   totalGastosComunes: number;
-  totalFondoReserva: number;
-  totalFondoContingencia: number;
-  totalFondoEstabilizacion: number; // Añadido para flexibilidad
+  fondoReserva?: number; // Ahora se calculará automáticamente
+  fondoContingencia?: number; // Ahora se calculará automáticamente
+  totalRecaudacion: number;
   estado: 'borrador' | 'publicado';
   fechaCreacion: Timestamp;
 }
@@ -78,7 +80,6 @@ export interface Recibo {
   cuotaParteGastosComunes: number;
   cuotaParteFondoReserva: number;
   cuotaParteFondoContingencia: number;
-  cuotaParteFondoEstabilizacion: number;
   subtotalMes: number; // Suma de todas las cuotas partes
   saldoAnterior: number; // Negativo si es deuda, positivo si es crédito/anticipo
   totalAPagar: number;

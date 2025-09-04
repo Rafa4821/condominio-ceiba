@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { Gasto, ConceptoGasto } from '@/types';
 
 interface PeriodoForm {
   mes: number;
@@ -29,11 +30,33 @@ export default function NuevoPeriodoPage() {
     try {
       const periodosCollection = collection(db, 'periodosCobro');
       
+      // Cargar conceptos de gasto fijos
+      const conceptosRef = collection(db, 'conceptosGasto');
+      const q = query(conceptosRef, where('tipo', '==', 'fijo'));
+      const conceptosSnapshot = await getDocs(q);
+
+      const gastosFijos: Gasto[] = [];
+      let totalGastosFijos = 0;
+
+      conceptosSnapshot.forEach(doc => {
+        const concepto = { id: doc.id, ...doc.data() } as ConceptoGasto;
+        if (concepto.montoFijo && concepto.montoFijo > 0) {
+          const nuevoGasto: Gasto = {
+            id: `${Date.now()}-${concepto.id}`,
+            descripcion: concepto.descripcion,
+            categoria: concepto.categoria,
+            monto: concepto.montoFijo,
+          };
+          gastosFijos.push(nuevoGasto);
+          totalGastosFijos += nuevoGasto.monto;
+        }
+      });
+
       const newPeriodo = {
         mes: Number(data.mes),
         ano: Number(data.ano),
-        gastos: [],
-        totalGastosComunes: 0,
+        gastos: gastosFijos,
+        totalGastosComunes: totalGastosFijos,
         estado: 'borrador',
         fechaCreacion: serverTimestamp(),
       };
