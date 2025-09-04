@@ -4,9 +4,9 @@ import { doc, writeBatch, collection, query, where, getDocs } from 'firebase/fir
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id: periodoId } = context.params;
+  const periodoId = params.id;
 
   if (!periodoId) {
     return NextResponse.json({ error: 'ID de período no proporcionado' }, { status: 400 });
