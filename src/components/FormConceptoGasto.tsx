@@ -5,12 +5,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { ConceptoGasto } from '@/types';
 
 // Este tipo representa los datos del formulario, sin el 'id'
-export interface ConceptoGastoData {
-  descripcion: string;
-  categoria: 'comun' | 'individual';
-  tipo: 'fijo' | 'variable';
-  montoFijo?: number;
-}
+export type ConceptoGastoData = Omit<ConceptoGasto, 'id'>;
 
 interface FormConceptoGastoProps {
   onSubmit: SubmitHandler<ConceptoGastoData>;
@@ -58,6 +53,9 @@ export default function FormConceptoGasto({ onSubmit, initialData }: FormConcept
           >
             <option value="comun">Gasto Común (Prorrateable)</option>
             <option value="individual">Gasto Individual (Asignación directa)</option>
+            <option value="fondo_reserva">Fondo de Reserva</option>
+            <option value="fondo_contingencia">Fondo de Contingencia</option>
+            <option value="fondo_estabilizacion">Fondo de Estabilización</option>
           </select>
           {errors.categoria && <div className="text-danger">{errors.categoria.message}</div>}
         </div>
