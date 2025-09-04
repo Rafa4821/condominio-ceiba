@@ -60,13 +60,11 @@ export async function POST(req: Request) {
       try {
         const pdfBuffer = await renderToBuffer(<ReciboPDF recibo={recibo} condominio={condominio} periodo={periodo} />);
 
+        const toAddress = process.env.NODE_ENV === 'development' ? 'rafaellucero998@gmail.com' : propietarioEmail;
+
         const fromAddress = process.env.NODE_ENV === 'development'
           ? 'Condominio Ceiba <onboarding@resend.dev>'
           : process.env.RESEND_FROM!;
-
-        const toAddress = process.env.NODE_ENV === 'development'
-          ? 'rafaellucero998@gmail.com'
-          : propietarioEmail;
 
         const { error } = await resend.emails.send({
           from: fromAddress,
@@ -87,7 +85,7 @@ export async function POST(req: Request) {
 
         results.sent++;
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error enviando a ${propietarioEmail}:`, error);
         results.failed++;
         results.errors.push({ email: propietarioEmail, error });

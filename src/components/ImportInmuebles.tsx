@@ -40,6 +40,8 @@ export const ImportInmuebles: React.FC<ImportInmueblesProps> = ({ onInmueblesImp
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
+            // Limpia los encabezados de espacios y del carácter BOM
+            transformHeader: header => header.trim().replace(/^\uFEFF/, ''),
             complete: (results) => resolve(results.data as InmuebleRow[]),
             error: (error) => reject(error),
           });
@@ -54,9 +56,7 @@ export const ImportInmuebles: React.FC<ImportInmueblesProps> = ({ onInmueblesImp
         },
         alicuota: parseFloat(String(row.alicuota)) || 0,
         saldoAnterior: parseFloat(String(row.saldo_anterior)) || 0,
-      })).filter(inmueble => 
-        inmueble.identificador && inmueble.propietario.nombre && inmueble.propietario.email
-      );
+      }));
 
       if (inmuebles.length > 0) {
         onInmueblesImported(inmuebles);

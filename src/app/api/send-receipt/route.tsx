@@ -5,21 +5,13 @@ import { db } from '@/lib/firebase';
 import { Recibo, Condominio, PeriodoCobro, Inmueble } from '@/types';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
-import { renderToStream } from '@react-pdf/renderer';
+import { renderToBuffer } from '@react-pdf/renderer';
 import { ReceiptEmail } from '@/emails/ReceiptEmail';
 import { ReciboPDF } from '@/components/pdf/ReciboPDF';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  return new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-    stream.on('error', (err) => reject(err));
-    stream.on('end', () => resolve(Buffer.concat(chunks)));
-  });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,14 +54,13 @@ export async function POST(req: NextRequest) {
     const condominio = condominioSnap.data() as Condominio;
 
     // 2. Generar el PDF en buffer
-    const pdfStream = await renderToStream(
+    const pdfBuffer = await renderToBuffer(
       <ReciboPDF 
         recibo={recibo} 
         condominio={condominio} 
         periodo={periodo}
       />
     );
-    const pdfBuffer = await streamToBuffer(pdfStream);
 
     // 3. Renderizar el HTML del correo
     const emailHtml = await render(
@@ -85,9 +76,7 @@ export async function POST(req: NextRequest) {
       ? 'Condominio Ceiba <onboarding@resend.dev>'
       : process.env.RESEND_FROM!;
 
-    const toAddress = process.env.NODE_ENV === 'development'
-      ? ['rafaellucero998@gmail.com']
-      : [inmueble.propietario.email];
+    const toAddress = process.env.NODE_ENV === 'development' ? ['rafaellucero998@gmail.com'] : [inmueble.propietario.email];
 
     const { data, error } = await resend.emails.send({
       from: fromAddress,

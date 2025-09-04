@@ -89,7 +89,7 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          {condominio.logoUrl && <Image style={styles.logo} src={`${process.env.NEXT_PUBLIC_BASE_URL}${condominio.logoUrl}`} />}
+          {condominio.logoUrl && <Image style={styles.logo} src={condominio.logoUrl} />}
           <View style={styles.headerTextContainer}>
             <Text style={styles.condoName}>{condominio.nombre.toUpperCase()}</Text>
             <Text style={styles.condoInfo}>{condominio.direccion}</Text>
