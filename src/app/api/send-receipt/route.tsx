@@ -1,6 +1,7 @@
 import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, getDoc } from 'firebase/firestore';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { db } from '@/lib/firebase';
 import { Recibo, Condominio, PeriodoCobro, Inmueble } from '@/types';
 import { Resend } from 'resend';
@@ -53,11 +54,36 @@ export async function POST(req: NextRequest) {
     }
     const condominio = condominioSnap.data() as Condominio;
 
+        // --- INICIO: Lógica para incrustar el logo como Base64 ---
+    let logoDataUrl: string | undefined = undefined;
+    if (condominio.logoPath) {
+      try {
+        const storage = getStorage();
+        const logoRef = ref(storage, condominio.logoPath);
+        const downloadUrl = await getDownloadURL(logoRef);
+
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch logo from generated URL: ${response.statusText}`);
+        }
+        const imageBuffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        const base64Image = Buffer.from(imageBuffer).toString('base64');
+        logoDataUrl = `data:${contentType};base64,${base64Image}`;
+
+      } catch (error) {
+        console.error("Error al procesar el logo, se generará el PDF sin él:", error);
+      }
+    }
+    // --- FIN: Lógica para incrustar el logo como Base64 ---
+
+    const condominioParaPDF = { ...condominio, logoUrl: logoDataUrl };
+
     // 2. Generar el PDF en buffer
     const pdfBuffer = await renderToBuffer(
       <ReciboPDF 
         recibo={recibo} 
-        condominio={condominio} 
+        condominio={condominioParaPDF} 
         periodo={periodo}
       />
     );

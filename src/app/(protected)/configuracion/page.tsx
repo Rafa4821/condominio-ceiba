@@ -12,14 +12,14 @@ import { Condominio } from '@/types';
 const CONFIG_ID = 'main';
 
 // Usamos Omit para quitar el id y la moneda, ya que se manejan internamente
-type CondominioFormData = Omit<Condominio, 'id' | 'moneda' | 'logoUrl'> & {
+type CondominioFormData = Omit<Condominio, 'id' | 'moneda' | 'logoUrl' | 'logoPath'> & {
   logo?: FileList;
 };
 
 export default function ConfiguracionPage() {
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<CondominioFormData>();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
+  const [existingLogoPath, setExistingLogoPath] = useState<string | null>(null);
 
   const logoFile = watch('logo');
 
@@ -32,8 +32,12 @@ export default function ConfiguracionPage() {
         // El tipo de `docSnap.data()` es genérico, lo casteamos a lo que esperamos
         const data = docSnap.data() as Condominio;
         reset(data);
-        if (data.logoUrl) {
-          setExistingLogoUrl(data.logoUrl);
+        if (data.logoPath) {
+          setExistingLogoPath(data.logoPath);
+          // Generar una URL de descarga para la vista previa del logo existente
+          const storage = getStorage();
+          const logoRef = ref(storage, data.logoPath);
+          getDownloadURL(logoRef).then(url => setLogoPreview(url));
         }
       }
     };
@@ -54,15 +58,15 @@ export default function ConfiguracionPage() {
   }, [logoFile]);
 
   const onSubmit: SubmitHandler<CondominioFormData> = async (data) => {
-    let logoUrl = existingLogoUrl;
+    let logoPath = existingLogoPath;
 
     if (data.logo && data.logo.length > 0) {
       const file = data.logo[0];
       const storage = getStorage();
       const storageRef = ref(storage, `config/logo/${file.name}`);
       try {
-        const snapshot = await uploadBytes(storageRef, file);
-        logoUrl = await getDownloadURL(snapshot.ref);
+        await uploadBytes(storageRef, file);
+        logoPath = storageRef.fullPath; // Guardamos la ruta completa del archivo
       } catch (error) {
         console.error('Error al subir el logo:', error);
         alert('Hubo un error al subir el logo.');
@@ -76,7 +80,7 @@ export default function ConfiguracionPage() {
       const docRef = doc(db, 'condominio', CONFIG_ID);
       // Usamos setDoc con merge:true para crear o actualizar el documento
       // Se añade la moneda fija 'USD' al guardar
-      await setDoc(docRef, { ...formData, logoUrl, moneda: 'USD' }, { merge: true });
+      await setDoc(docRef, { ...formData, logoPath, moneda: 'USD' }, { merge: true });
       alert('Configuración guardada con éxito.');
     } catch (error) {
       console.error('Error al guardar la configuración:', error);
@@ -131,8 +135,6 @@ export default function ConfiguracionPage() {
           <p>Vista Previa:</p>
           {logoPreview ? (
             <Image src={logoPreview} alt="Vista previa del logo" width={150} height={150} style={{ objectFit: 'contain' }} />
-          ) : existingLogoUrl ? (
-            <Image src={existingLogoUrl} alt="Logo actual" width={150} height={150} style={{ objectFit: 'contain' }} />
           ) : (
             <p className="text-muted">No hay logo cargado.</p>
           )}

@@ -8,7 +8,8 @@ export interface Condominio {
   rif: string;
   datosBancarios: string;
   correoContacto: string;
-  logoUrl?: string;
+  logoUrl?: string; // URL de descarga, se usará menos
+  logoPath?: string; // Ruta al archivo en Firebase Storage
   moneda: 'USD'; // Moneda fija para el sistema
 }
 
