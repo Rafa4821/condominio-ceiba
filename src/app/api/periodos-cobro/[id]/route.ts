@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const periodoId = params.id;
+export async function DELETE(request: NextRequest) {
+  const pathname = new URL(request.url).pathname;
+  const periodoId = pathname.split('/').pop();
 
   if (!periodoId) {
     return NextResponse.json({ error: 'ID de período no proporcionado' }, { status: 400 });
