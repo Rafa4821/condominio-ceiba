@@ -1,33 +1,35 @@
-import { Gasto, Inmueble, Recibo } from '@/types';
+import { Condominio, Gasto, Inmueble, Recibo } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 
 
 /**
  * Genera los recibos para todos los inmuebles basado en los gastos de un período.
  */
-export function generarRecibos(periodoId: string, gastos: Gasto[], inmuebles: Inmueble[]): Recibo[] {
-  const totalAlicuota = inmuebles.reduce((sum, i) => sum + i.alicuota, 0);
-  if (totalAlicuota === 0) return [];
+export function generarRecibos(periodoId: string, gastos: Gasto[], inmuebles: Inmueble[], condominio: Condominio): Recibo[] {
+  // 1. Calcular el total de gastos comunes del período.
+  const totalGastosComunes = gastos.reduce((sum, g) => g.categoria === 'comun' ? sum + g.monto : sum, 0);
+
+  // 2. Calcular los montos totales de los fondos para todo el condominio.
+  const totalFondoReserva = totalGastosComunes * (condominio.porcentajeFondoReserva / 100);
+  const totalFondoContingencia = totalGastosComunes * (condominio.porcentajeFondoContingencia / 100);
 
   return inmuebles.map(inmueble => {
-    // 1. Calcular el total de gastos comunes
-    const totalGastosComunes = gastos.reduce((sum, g) => g.categoria === 'comun' ? sum + g.monto : sum, 0);
+    // La alícuota se trata como un porcentaje (ej. 1.612 para 1.612%)
+    const alicuotaComoFraccion = inmueble.alicuota / 100;
 
-    // 2. Calcular los fondos como porcentaje de los gastos comunes
-    const totalFondoReserva = totalGastosComunes * 0.10; // 10%
-    const totalFondoContingencia = totalGastosComunes * 0.235; // 23.5%
+    // 3. Calcular la cuota parte de los gastos comunes para el inmueble.
+    const cuotaParteGastosComunes = totalGastosComunes * alicuotaComoFraccion;
 
-    // 3. Calcular la cuota parte de cada concepto para el inmueble
-    const cuotaParteGastosComunes = (inmueble.alicuota / totalAlicuota) * totalGastosComunes;
-    const cuotaParteFondoReserva = (inmueble.alicuota / totalAlicuota) * totalFondoReserva;
-    const cuotaParteFondoContingencia = (inmueble.alicuota / totalAlicuota) * totalFondoContingencia;
+    // 4. Calcular la cuota parte de los fondos para el inmueble.
+    const cuotaParteFondoReserva = totalFondoReserva * alicuotaComoFraccion;
+    const cuotaParteFondoContingencia = totalFondoContingencia * alicuotaComoFraccion;
 
-    // 4. Calcular totales para el recibo
+    // 5. Calcular totales para el recibo del inmueble.
     const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia;
     const totalAPagar = subtotalMes + inmueble.saldoAnterior;
 
     const recibo: Recibo = {
-      id: '', // Se asignará al guardar en Firestore
+      id: '', // El ID se asigna en el batch de Firestore
       periodoId,
       inmuebleId: inmueble.id,
       inmuebleInfo: {
@@ -40,7 +42,7 @@ export function generarRecibos(periodoId: string, gastos: Gasto[], inmuebles: In
         .map(g => ({
           descripcion: g.descripcion,
           montoTotalGasto: g.monto,
-          cuotaParte: (inmueble.alicuota / totalAlicuota) * g.monto,
+          cuotaParte: g.monto * alicuotaComoFraccion, // Cuota parte de cada gasto individual
         })),
       cuotaParteGastosComunes,
       cuotaParteFondoReserva,

@@ -84,8 +84,8 @@ interface ReciboPDFProps {
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, periodo }) => {
-  const totalFondoReserva = (periodo.totalGastosComunes || 0) * 0.10;
-  const totalFondoContingencia = (periodo.totalGastosComunes || 0) * 0.235;
+  const totalFondoReserva = (periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoReserva / 100);
+  const totalFondoContingencia = (periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoContingencia / 100);
   const totalGeneralCondominio = (periodo.totalGastosComunes || 0) + totalFondoReserva + totalFondoContingencia;
 
   return (
@@ -144,11 +144,11 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
                 </View>
               ))}
               <View style={styles.gastosRow}>
-                <Text style={styles.gastosDescription}>Fondo de Reserva (10%)</Text>
+                <Text style={styles.gastosDescription}>{`Fondo de Reserva (${condominio.porcentajeFondoReserva}%)`}</Text>
                 <Text style={styles.gastosAmount}>{formatCurrency(totalFondoReserva)}</Text>
               </View>
               <View style={styles.gastosRow}>
-                <Text style={styles.gastosDescription}>Fondo de Contingencia (23.5%)</Text>
+                <Text style={styles.gastosDescription}>{`Fondo de Contingencia (${condominio.porcentajeFondoContingencia}%)`}</Text>
                 <Text style={styles.gastosAmount}>{formatCurrency(totalFondoContingencia)}</Text>
               </View>
             </View>
@@ -174,11 +174,11 @@ export const ReciboPDF: React.FC<ReciboPDFProps> = ({ recibo, condominio, period
                 </View>
               ))}
               <View style={styles.gastosRow}>
-                <Text style={styles.gastosDescription}>Fondo de Reserva (10%)</Text>
+                <Text style={styles.gastosDescription}>{`Fondo de Reserva (${condominio.porcentajeFondoReserva}%)`}</Text>
                 <Text style={styles.gastosAmount}>{formatCurrency(recibo.cuotaParteFondoReserva)}</Text>
               </View>
               <View style={styles.gastosRow}>
-                <Text style={styles.gastosDescription}>Fondo de Contingencia (23.5%)</Text>
+                <Text style={styles.gastosDescription}>{`Fondo de Contingencia (${condominio.porcentajeFondoContingencia}%)`}</Text>
                 <Text style={styles.gastosAmount}>{formatCurrency(recibo.cuotaParteFondoContingencia)}</Text>
               </View>
             </View>

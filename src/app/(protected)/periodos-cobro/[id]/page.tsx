@@ -9,11 +9,12 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { db } from '@/lib/firebase';
 import { PeriodoCobro, Gasto, Inmueble, Recibo, Condominio, ConceptoGasto } from '@/types';
 import { ReciboPDF } from '@/components/pdf/ReciboPDF';
+import { generarRecibos } from '@/lib/calculo';
 
 
 interface GastoForm {
   conceptoId: string;
-  monto: number;
+  monto: number | null;
 }
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -26,26 +27,35 @@ export default function PeriodoDetallePage() {
   const [periodo, setPeriodo] = useState<PeriodoCobro | null>(null);
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [conceptos, setConceptos] = useState<ConceptoGasto[]>([]);
+  const [condominio, setCondominio] = useState<Condominio | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfData, setPdfData] = useState<{ recibo: Recibo; condominio: Condominio; periodo: PeriodoCobro; } | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [isSendingBulk, setIsSendingBulk] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<GastoForm>();
+  const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<GastoForm>();
 
-  // Cargar conceptos de gasto y el período actual
+  // Cargar datos iniciales (conceptos, condominio, período)
   useEffect(() => {
     if (!id) return;
 
-    const fetchConceptos = async () => {
+    const fetchInitialData = async () => {
+      // Cargar conceptos de gasto
       const conceptosCollection = collection(db, 'conceptosGasto');
-      const snapshot = await getDocs(conceptosCollection);
-      const conceptosList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConceptoGasto));
+      const conceptosSnapshot = await getDocs(conceptosCollection);
+      const conceptosList = conceptosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConceptoGasto));
       setConceptos(conceptosList);
+
+      // Cargar datos del condominio
+      const condominioRef = doc(db, 'condominio', 'main');
+      const condominioSnap = await getDoc(condominioRef);
+      if (condominioSnap.exists()) {
+        setCondominio(condominioSnap.data() as Condominio);
+      }
     };
 
-    fetchConceptos();
+    fetchInitialData();
 
     const periodoDoc = doc(db, 'periodosCobro', id);
     const unsubscribe = onSnapshot(periodoDoc, async (doc) => {
@@ -59,9 +69,8 @@ export default function PeriodoDetallePage() {
           const recibosList = recibosSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Recibo));
           setRecibos(recibosList);
         }
-
       } else {
-        router.push('/periodos-cobro'); // Si no existe, volver
+        router.push('/periodos-cobro');
       }
       setLoading(false);
     });
@@ -69,17 +78,37 @@ export default function PeriodoDetallePage() {
     return () => unsubscribe();
   }, [id, router]);
 
+  // Observar el concepto seleccionado para auto-rellenar el monto si es fijo
+  const conceptoIdSeleccionado = watch('conceptoId');
+  const conceptoSeleccionado = conceptos.find(c => c.id === conceptoIdSeleccionado);
+
+  useEffect(() => {
+    if (conceptoSeleccionado) {
+      if (conceptoSeleccionado.tipo === 'fijo' && conceptoSeleccionado.montoFijo) {
+        setValue('monto', conceptoSeleccionado.montoFijo);
+      } else {
+        // Limpiar el monto si se cambia a un concepto variable
+        setValue('monto', null);
+      }
+    }
+  }, [conceptoSeleccionado, setValue]);
+
   const handleAddGasto: SubmitHandler<GastoForm> = async (data) => {
     if (!periodo) return;
 
     const conceptoSeleccionado = conceptos.find(c => c.id === data.conceptoId);
     if (!conceptoSeleccionado) return;
 
+    // Si el concepto es fijo, el monto es el predefinido; si no, es el del formulario.
+    const montoGasto = conceptoSeleccionado.tipo === 'fijo' 
+      ? conceptoSeleccionado.montoFijo || 0 
+      : Number(data.monto);
+
     const nuevoGasto: Gasto = {
       id: `${Date.now()}`,
       descripcion: conceptoSeleccionado.descripcion,
       categoria: conceptoSeleccionado.categoria,
-      monto: Number(data.monto),
+      monto: montoGasto,
     };
 
     const periodoRef = doc(db, 'periodosCobro', id);
@@ -108,65 +137,35 @@ export default function PeriodoDetallePage() {
   };
 
   const handleFinalizar = async () => {
-    if (!periodo || !window.confirm('¿Está seguro de que desea finalizar el registro de gastos y generar los recibos? Esta acción no se puede deshacer.')) return;
+    if (!periodo || !condominio || !window.confirm('¿Está seguro de que desea finalizar el registro de gastos y generar los recibos? Esta acción no se puede deshacer.')) return;
 
     try {
       const inmueblesCollection = collection(db, 'inmuebles');
       const inmueblesSnapshot = await getDocs(inmueblesCollection);
       const inmuebles = inmueblesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inmueble));
 
-      // Calcular fondos automáticamente
-      const fondoReservaCalculado = (periodo.totalGastosComunes || 0) * 0.10;
-      const fondoContingenciaCalculado = (periodo.totalGastosComunes || 0) * 0.235;
+      // Usar la función centralizada para generar los recibos
+      const nuevosRecibos = generarRecibos(periodo.id, periodo.gastos, inmuebles, condominio);
 
       const batch = writeBatch(db);
       const recibosCollection = collection(db, 'recibos');
 
-      for (const inmueble of inmuebles) {
-        const alicuota = inmueble.alicuota / 100;
-        
-        const cuotaParteGastosComunes = (periodo.totalGastosComunes || 0) * alicuota;
-        const cuotaParteFondoReserva = fondoReservaCalculado * alicuota;
-        const cuotaParteFondoContingencia = fondoContingenciaCalculado * alicuota;
-
-        const detalleGastosComunes = periodo.gastos
-          .map(gasto => ({
-            descripcion: gasto.descripcion,
-            montoTotalGasto: gasto.monto,
-            cuotaParte: gasto.monto * alicuota,
-          }));
-
-        const subtotalMes = cuotaParteGastosComunes + cuotaParteFondoReserva + cuotaParteFondoContingencia;
-        const totalAPagar = subtotalMes + inmueble.saldoAnterior;
-
-        const nuevoRecibo: Omit<Recibo, 'id' | 'fechaEmision'> & { fechaEmision: FieldValue } = {
-          periodoId: periodo.id,
-          inmuebleId: inmueble.id,
-          inmuebleInfo: {
-            identificador: inmueble.identificador,
-            propietario: inmueble.propietario.nombre,
-            alicuota: inmueble.alicuota,
-          },
-          detalleGastosComunes,
-          cuotaParteGastosComunes,
-          cuotaParteFondoReserva,
-          cuotaParteFondoContingencia,
-          subtotalMes,
-          saldoAnterior: inmueble.saldoAnterior,
-          totalAPagar,
-          estado: 'pendiente',
-          fechaEmision: serverTimestamp(),
-        };
-
+      // Guardar los nuevos recibos en Firestore
+      nuevosRecibos.forEach(recibo => {
         const reciboRef = doc(recibosCollection);
-        batch.set(reciboRef, nuevoRecibo);
-      }
+        // Asignar el ID generado por Firestore al recibo antes de guardarlo
+        batch.set(reciboRef, { ...recibo, id: reciboRef.id, fechaEmision: serverTimestamp() });
+      });
 
+      // Actualizar el estado del período
       const periodoRef = doc(db, 'periodosCobro', id);
+      const totalFondoReserva = (periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoReserva / 100);
+      const totalFondoContingencia = (periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoContingencia / 100);
+      
       batch.update(periodoRef, { 
         estado: 'publicado',
-        fondoReserva: fondoReservaCalculado,
-        fondoContingencia: fondoContingenciaCalculado
+        fondoReserva: totalFondoReserva,
+        fondoContingencia: totalFondoContingencia
       });
 
       await batch.commit();
@@ -298,7 +297,17 @@ export default function PeriodoDetallePage() {
                 </div>
                 <div className="col-md-4">
                   <label htmlFor="monto" className="form-label">Monto (USD)</label>
-                  <input type="number" {...register('monto', { required: true, min: 0.01 })} step="0.01" className="form-control" />
+                  <input 
+                    type="number" 
+                    {...register('monto', { 
+                      required: conceptoSeleccionado?.tipo !== 'fijo', 
+                      min: 0.01, 
+                      valueAsNumber: true 
+                    })} 
+                    step="0.01" 
+                    className="form-control" 
+                    disabled={conceptoSeleccionado?.tipo === 'fijo'}
+                  />
                 </div>
                 <div className="col-md-2">
                   <button type="submit" className="btn btn-primary w-100" disabled={isSubmitting}>Agregar</button>
@@ -313,8 +322,12 @@ export default function PeriodoDetallePage() {
               <span>Gastos Registrados ({periodo.gastos.length})</span>
               <div className="text-end">
                 <strong>Total Gastos Comunes: ${(periodo.totalGastosComunes || 0).toFixed(2)}</strong><br />
-                <small>Fondo de Reserva (10%): ${((periodo.totalGastosComunes || 0) * 0.10).toFixed(2)}</small><br />
-                <small>Fondo de Contingencia (23.5%): ${((periodo.totalGastosComunes || 0) * 0.235).toFixed(2)}</small>
+                {condominio && (
+                  <>
+                    <small>Fondo de Reserva ({condominio.porcentajeFondoReserva}%): ${((periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoReserva / 100)).toFixed(2)}</small><br />
+                    <small>Fondo de Contingencia ({condominio.porcentajeFondoContingencia}%): ${((periodo.totalGastosComunes || 0) * (condominio.porcentajeFondoContingencia / 100)).toFixed(2)}</small>
+                  </>
+                )}
               </div>
             </div>
             <div className="card-body p-0">

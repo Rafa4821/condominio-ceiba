@@ -74,7 +74,7 @@ export default function ConfiguracionPage() {
       }
     }
 
-    const { logo, ...formData } = data; // Excluir el campo 'logo' de los datos a guardar
+    const { ...formData } = data; // Excluir el campo 'logo' de los datos a guardar
 
     try {
       const docRef = doc(db, 'condominio', CONFIG_ID);
@@ -123,6 +123,42 @@ export default function ConfiguracionPage() {
           {errors.datosBancarios && <p className="text-danger">{errors.datosBancarios.message}</p>}
         </div>
         
+        <hr className="my-4" />
+
+        <h5>Fondos y Reservas</h5>
+        <div className="row mb-3">
+          <div className="col-md-6">
+            <label htmlFor="porcentajeFondoReserva" className="form-label">Fondo de Reserva (%)</label>
+            <input 
+              type="number"
+              step="0.1"
+              {...register('porcentajeFondoReserva', { 
+                required: 'El porcentaje es obligatorio', 
+                valueAsNumber: true,
+                min: { value: 0, message: 'El valor no puede ser negativo' }
+              })} 
+              className="form-control" 
+              placeholder="10"
+            />
+            {errors.porcentajeFondoReserva && <p className="text-danger">{errors.porcentajeFondoReserva.message}</p>}
+          </div>
+          <div className="col-md-6">
+            <label htmlFor="porcentajeFondoContingencia" className="form-label">Fondo de Contingencia (%)</label>
+            <input 
+              type="number"
+              step="0.1"
+              {...register('porcentajeFondoContingencia', { 
+                required: 'El porcentaje es obligatorio', 
+                valueAsNumber: true,
+                min: { value: 0, message: 'El valor no puede ser negativo' }
+              })} 
+              className="form-control" 
+              placeholder="23.5"
+            />
+            {errors.porcentajeFondoContingencia && <p className="text-danger">{errors.porcentajeFondoContingencia.message}</p>}
+          </div>
+        </div>
+
         <hr className="my-4" />
 
         <h5>Logo del Condominio</h5>

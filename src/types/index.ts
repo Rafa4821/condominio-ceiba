@@ -11,6 +11,8 @@ export interface Condominio {
   logoUrl?: string; // URL de descarga, se usará menos
   logoPath?: string; // Ruta al archivo en Firebase Storage
   moneda: 'USD'; // Moneda fija para el sistema
+  porcentajeFondoReserva: number; // Ej: 10 para 10%
+  porcentajeFondoContingencia: number; // Ej: 23.5 para 23.5%
 }
 
 // Representa la ficha de cada apartamento o casa

@@ -1,87 +1,127 @@
 import { describe, it, expect } from 'vitest';
-import { generarRecibos, calcularTotalRecibo } from './calculo';
-import { Concept, Unit, ReceiptItem } from '@/types';
+import { generarRecibos } from './calculo';
+import { Condominio, Gasto, Inmueble } from '../types';
 
-// Mock Data
-const unidades: Unit[] = [
-  { id: 'u1', nombre: 'Depto 101', email: 'a@a.com', coef: 0.25, m2: 50, residentes: 2, activo: true, buildingId: 'b1' },
-  { id: 'u2', nombre: 'Depto 102', email: 'b@b.com', coef: 0.50, m2: 100, residentes: 4, activo: true, buildingId: 'b1' },
-  { id: 'u3', nombre: 'Depto 103', email: 'c@c.com', coef: 0.25, m2: 50, residentes: 1, activo: true, buildingId: 'b1' },
-  { id: 'u4', nombre: 'Bodega 1', email: 'd@d.com', coef: 0.0, m2: 10, residentes: 0, activo: false, buildingId: 'b1' }, // Inactiva
-];
+const mockCondominio: Condominio = {
+  id: 'condo-1',
+  nombre: 'Condominio Ceiba',
+  direccion: 'Direccion Test',
+  rif: 'J-12345678-9',
+  moneda: 'USD',
+  logoUrl: '',
+  datosBancarios: '',
+  correoContacto: '',
+  porcentajeFondoReserva: 10,
+  porcentajeFondoContingencia: 20,
+};
 
 describe('generarRecibos', () => {
 
-  it('should handle prorrateo correctly', () => {
-    const conceptos: Concept[] = [
-      { id: 'c1', nombre: 'Gasto Común', glosa: '...', metodo: 'prorrateo', monto: 100000, activo: true, buildingId: 'b1' },
+  describe('Caso de prueba A: UI Example', () => {
+    const inmuebleTest: Inmueble[] = [{
+      id: 'inm-A',
+      identificador: '2A',
+      alicuota: 1.6120,
+      propietario: {
+        nombre: 'Francisco Isea',
+        email: 'test@test.com',
+      },
+      saldoAnterior: 0,
+    }];
+
+    const gastosTest: Gasto[] = [
+      { id: 'gasto-A', descripcion: 'prueba1', monto: 10000, categoria: 'comun' },
     ];
-    const recibos = generarRecibos(conceptos, unidades);
-    expect(recibos.get('u1')?.[0].monto).toBe(25000);
-    expect(recibos.get('u2')?.[0].monto).toBe(50000);
-    expect(recibos.get('u3')?.[0].monto).toBe(25000);
-    expect(recibos.has('u4')).toBe(false); // No debe generar para inactivas
+
+    const condominioTest: Condominio = {
+      ...mockCondominio,
+      porcentajeFondoReserva: 10,
+      porcentajeFondoContingencia: 20,
+    };
+
+    it('debe calcular los montos de cuota parte correctamente', () => {
+      const recibos = generarRecibos('p-1', gastosTest, inmuebleTest, condominioTest);
+      const recibo = recibos[0];
+
+      const totalGastosComunes = 10000;
+      const alicuotaFraccion = 1.6120 / 100;
+
+      const cuotaParteGastos = totalGastosComunes * alicuotaFraccion;
+      expect(recibo.cuotaParteGastosComunes).toBeCloseTo(161.20);
+
+      const totalFondoReserva = totalGastosComunes * (10 / 100);
+      const cuotaParteReserva = totalFondoReserva * alicuotaFraccion;
+      expect(recibo.cuotaParteFondoReserva).toBeCloseTo(16.12);
+
+      const totalFondoContingencia = totalGastosComunes * (20 / 100);
+      const cuotaParteContingencia = totalFondoContingencia * alicuotaFraccion;
+      expect(recibo.cuotaParteFondoContingencia).toBeCloseTo(32.24);
+      
+      expect(recibo.subtotalMes).toBeCloseTo(209.56);
+      expect(recibo.totalAPagar).toBeCloseTo(209.56);
+    });
   });
 
-  it('should handle metodo fijo correctly', () => {
-    const conceptos: Concept[] = [
-      { id: 'c2', nombre: 'Cuota Estacionamiento', glosa: '...', metodo: 'fijo', monto: 15000, activo: true, buildingId: 'b1' },
+  describe('Caso de prueba B: Recibo Real Apto 6C', () => {
+    const inmuebleTest: Inmueble[] = [{
+      id: 'inm-B',
+      identificador: '6C',
+      alicuota: 1.041,
+      propietario: {
+        nombre: 'Propietario 6C',
+        email: '6c@test.com',
+      },
+      saldoAnterior: 0,
+    }];
+
+    const gastosTest: Gasto[] = [
+      { id: 'gasto-B', descripcion: 'Gastos varios', monto: 1278.97, categoria: 'comun' },
     ];
-    const recibos = generarRecibos(conceptos, unidades);
-    expect(recibos.get('u1')?.[0].monto).toBe(15000);
-    expect(recibos.get('u2')?.[0].monto).toBe(15000);
-    expect(recibos.get('u3')?.[0].monto).toBe(15000);
+
+    const condominioTest: Condominio = {
+      ...mockCondominio,
+      porcentajeFondoReserva: 10,
+      porcentajeFondoContingencia: 23.46,
+    };
+
+    it('debe calcular los montos de cuota parte para un caso real', () => {
+      const recibos = generarRecibos('p-2', gastosTest, inmuebleTest, condominioTest);
+      const recibo = recibos[0];
+
+      expect(recibo.cuotaParteGastosComunes).toBeCloseTo(13.31, 2);
+      expect(recibo.cuotaParteFondoReserva).toBeCloseTo(1.33, 2);
+      expect(recibo.cuotaParteFondoContingencia).toBeCloseTo(3.12, 2);
+      // Redondeamos el resultado final para la comparación, evitando errores de punto flotante.
+      const subtotalRedondeado = parseFloat(recibo.subtotalMes.toFixed(2));
+      expect(subtotalRedondeado).toBe(17.77);
+      expect(recibo.totalAPagar).toBeCloseTo(17.77, 2);
+    });
   });
 
-  it('should handle parametro (m2) correctly', () => {
-    const conceptos: Concept[] = [
-      { id: 'c3', nombre: 'Calefacción', glosa: '...', metodo: 'parametro', paramKey: 'm2', tarifa: 500, activo: true, buildingId: 'b1' },
-    ];
-    const recibos = generarRecibos(conceptos, unidades);
-    expect(recibos.get('u1')?.[0].monto).toBe(25000); // 50m2 * 500
-    expect(recibos.get('u2')?.[0].monto).toBe(50000); // 100m2 * 500
-    expect(recibos.get('u3')?.[0].monto).toBe(25000); // 50m2 * 500
+  it('debería retornar un array vacío si no hay inmuebles', () => {
+    const recibos = generarRecibos('p-3', [], [], mockCondominio);
+    expect(recibos).toHaveLength(0);
   });
 
-  it('should handle multiple concepts', () => {
-    const conceptos: Concept[] = [
-      { id: 'c1', nombre: 'Gasto Común', glosa: '...', metodo: 'prorrateo', monto: 100000, activo: true, buildingId: 'b1' },
-      { id: 'c2', nombre: 'Cuota Fija', glosa: '...', metodo: 'fijo', monto: 10000, activo: true, buildingId: 'b1' },
-    ];
-    const recibos = generarRecibos(conceptos, unidades);
-    const recibo_u1 = recibos.get('u1');
-    expect(recibo_u1).toHaveLength(2);
-    expect(recibo_u1?.[0].monto).toBe(25000);
-    expect(recibo_u1?.[1].monto).toBe(10000);
-  });
+  it('debería manejar el caso sin gastos comunes', () => {
+    const inmuebleTest: Inmueble[] = [{
+      id: 'inm-C',
+      identificador: '3C',
+      alicuota: 5.0,
+      propietario: {
+        nombre: 'Propietario 3C',
+        email: '3c@test.com',
+      },
+      saldoAnterior: 50,
+    }];
 
-  it('should ignore inactive concepts', () => {
-    const conceptos: Concept[] = [
-      { id: 'c1', nombre: 'Activo', glosa: '...', metodo: 'fijo', monto: 100, activo: true, buildingId: 'b1' },
-      { id: 'c2', nombre: 'Inactivo', glosa: '...', metodo: 'fijo', monto: 200, activo: false, buildingId: 'b1' },
-    ];
-    const recibos = generarRecibos(conceptos, unidades);
-    expect(recibos.get('u1')).toHaveLength(1);
-    expect(recibos.get('u1')?.[0].nombre).toBe('Activo');
-  });
+    const recibos = generarRecibos('p-4', [], inmuebleTest, mockCondominio);
+    const recibo = recibos[0];
 
-  it('should return an empty map if no active units', () => {
-    const recibos = generarRecibos([], unidades.filter(u => !u.activo));
-    expect(recibos.size).toBe(0);
-  });
-});
-
-describe('calcularTotalRecibo', () => {
-  it('should sum the amounts of receipt items', () => {
-    const items: ReceiptItem[] = [
-      { conceptoId: 'c1', nombre: 'A', glosa: '...', monto: 100 },
-      { conceptoId: 'c2', nombre: 'B', glosa: '...', monto: 250 },
-      { conceptoId: 'c3', nombre: 'C', glosa: '...', monto: 50 },
-    ];
-    expect(calcularTotalRecibo(items)).toBe(400);
-  });
-
-  it('should return 0 for an empty array', () => {
-    expect(calcularTotalRecibo([])).toBe(0);
+    expect(recibo.cuotaParteGastosComunes).toBe(0);
+    expect(recibo.cuotaParteFondoReserva).toBe(0);
+    expect(recibo.cuotaParteFondoContingencia).toBe(0);
+    expect(recibo.subtotalMes).toBe(0);
+    expect(recibo.totalAPagar).toBe(50);
   });
 });
