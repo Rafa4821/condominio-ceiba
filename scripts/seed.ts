@@ -30,6 +30,8 @@ async function seedDatabase() {
     datosBancarios: 'Banco Ficticio, Cta. Corriente 123-456-789',
     correoContacto: 'contacto@edificioceiba.com',
     moneda: 'USD',
+    porcentajeFondoReserva: 10, // 10%
+    porcentajeFondoContingencia: 5, // 5%
   };
   batch.set(condominioRef, condominioData);
   console.log(`- Condominio '${condominioData.nombre}' preparado para seeding.`);
